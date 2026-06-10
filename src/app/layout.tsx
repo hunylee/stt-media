@@ -9,10 +9,10 @@ const notoSansKr = Noto_Sans_KR({
 });
 
 export const metadata: Metadata = {
-  title: "Airport STT-Gloss | 공항 실시간 자막 서비스",
+  title: "공항 소통 도우미 | Airport Communication Helper",
   description:
-    "청각장애인을 위한 공항 전용 실시간 음성인식 + 수어 글로스 이중 자막 웹앱. Whisper AI 기반 한국어 음성인식과 수어 글로스 자막을 동시에 제공합니다.",
-  keywords: ["공항", "수어", "자막", "청각장애", "STT", "음성인식", "Whisper"],
+    "청각장애인을 위한 공항 소통 도우미. 공항 스태프에게 화면을 보여주면 한국어 + 수어 글로스 + 영어로 소통할 수 있습니다.",
+  keywords: ["공항", "수어", "청각장애인", "소통", "장애인", "공항 문장", "어시스티브", "글로스"],
 };
 
 export const viewport: Viewport = {
