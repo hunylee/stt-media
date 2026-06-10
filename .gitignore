@@ -1,2 +1,27 @@
+# 의존성
 node_modules
+
+# Next.js 빌드 산출물 및 캐시 (GitHub 100MB 제한 초과 방지)
+.next
+out
+
+# 환경변수 (비밀키 포함)
+.env
+.env.local
+.env.development.local
+.env.test.local
+.env.production.local
+
+# 배포 설정
 .vercel
+
+# TypeScript 빌드 캐시
+tsconfig.tsbuildinfo
+
+# OS 관련
+.DS_Store
+Thumbs.db
+
+# 에디터
+.vscode
+.idea
