@@ -4,9 +4,16 @@
  * - AudioWorklet 기반 16kHz 단채널 PCM 캡처
  * - 3초 단위 WAV 청크 생성 → /api/transcribe 전송
  * - 오프라인 시 Web Speech API 자동 전환
+ *
+ * ★ GEMINI_STT_ENABLED = false 시:
+ *   Gemini /api/transcribe 호출을 건너뛰고
+ *   브라우저 내장 Web Speech API를 기본으로 사용합니다.
  */
 
 'use client';
+
+// ── 기능 플래그: false로 설정하면 Gemini STT 보류, Web Speech API 사용 ──
+const GEMINI_STT_ENABLED = false;
 
 import { useRef, useCallback, useEffect, useSyncExternalStore } from 'react';
 import { encodeToWAV } from '@/utils/wavEncoder';
@@ -201,6 +208,13 @@ export function useVoiceRecognizer({
   // ── AudioWorklet 시작 ────────────────────────────────────
   const startListening = useCallback(async () => {
     if (isListeningRef.current) return;
+
+    // Gemini STT 보류 중 → Web Speech API 직접 사용
+    if (!GEMINI_STT_ENABLED) {
+      isListeningRef.current = true;
+      startWebSpeechFallback();
+      return;
+    }
 
     try {
       // 마이크 스트림 요청
