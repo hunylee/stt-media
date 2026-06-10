@@ -6,14 +6,14 @@
  * - 수어 어순: SOV (주어-목적어-서술어) 유지, 핵심어 추출
  */
 
-// 제거할 조사 패턴 (긴 것 → 짧은 것 순서로 적용)
-const PARTICLE_PATTERNS: RegExp[] = [
-  /에서/g, /으로/g, /에게/g, /한테/g,
-  /부터/g, /까지/g, /이랑/g, /하고/g,
-  /이라/g, /이나/g, /이든/g,
-  /와/g, /과/g, /랑/g,
-  /을/g, /를/g, /은/g, /는/g,
-  /이/g, /가/g, /의/g, /에/g, /로/g,
+// 제거할 조사 목록 (긴 것 → 짧은 것 순서로 적용)
+const PARTICLES = [
+  '에서', '으로', '에게', '한테',
+  '부터', '까지', '이랑', '하고',
+  '이라', '이나', '이든',
+  '와', '과', '랑',
+  '을', '를', '은', '는',
+  '이', '가', '의', '에', '로',
 ];
 
 // 어미/경어 정규화 규칙
@@ -74,9 +74,13 @@ function ruleBasedGloss(sentence: string): string {
   }
 
   // 2. 조사 제거
-  for (const pattern of PARTICLE_PATTERNS) {
-    text = text.replace(pattern, ' ');
-  }
+  text = text
+    .split(/\s+/)
+    .map((word) => {
+      const particle = PARTICLES.find((item) => word.endsWith(item));
+      return particle ? word.slice(0, -particle.length) : word;
+    })
+    .join(' ');
 
   // 3. 여러 공백 압축 및 트리밍
   text = text.replace(/\s+/g, ' ').trim();

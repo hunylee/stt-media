@@ -72,7 +72,7 @@ export function SubtitleDisplay({
           )}
         </p>
         {rawText && rawText !== matchedSentence && matchedSentence && (
-          <p className="raw-text-hint">인식: "{rawText}"</p>
+          <p className="raw-text-hint">인식: &quot;{rawText}&quot;</p>
         )}
       </div>
 

@@ -8,7 +8,7 @@
 
 'use client';
 
-import { useRef, useCallback, useEffect, useState } from 'react';
+import { useRef, useCallback, useEffect, useSyncExternalStore } from 'react';
 import { encodeToWAV } from '@/utils/wavEncoder';
 import type { TranscribeResponse } from '@/types/database';
 
@@ -23,6 +23,21 @@ interface UseVoiceRecognizerReturn {
   startListening: () => Promise<void>;
   stopListening: () => void;
   isSupported: boolean;
+}
+
+function subscribeToSupportChanges() {
+  return () => {};
+}
+
+function getVoiceSupportSnapshot() {
+  return (
+    typeof window !== 'undefined' &&
+    !!(navigator.mediaDevices && navigator.mediaDevices.getUserMedia)
+  );
+}
+
+function getServerVoiceSupportSnapshot() {
+  return false;
 }
 
 // 지수 백오프 재시도 (Whisper API Rate Limit 대응)
@@ -58,16 +73,34 @@ export function useVoiceRecognizer({
   const isListeningRef = useRef(false);
   const isProcessingRef = useRef(false);
 
-  // isSupported: SSR 시 false, 클라이언트 마운트 후 실제 가용성 확인
-  // (렌더 시점 직접 navigator 사용 금지 — hydration 불일치 방지)
-  const [isSupported, setIsSupported] = useState(false);
+  const isSupported = useSyncExternalStore(
+    subscribeToSupportChanges,
+    getVoiceSupportSnapshot,
+    getServerVoiceSupportSnapshot
+  );
 
-  useEffect(() => {
-    setIsSupported(
-      typeof window !== 'undefined' &&
-      !!(navigator.mediaDevices && navigator.mediaDevices.getUserMedia)
-    );
-  }, []);
+  // ── 정지 ────────────────────────────────────────────────
+  const stopListening = useCallback(() => {
+    isListeningRef.current = false;
+    isProcessingRef.current = false;
+
+    workletNodeRef.current?.disconnect();
+    workletNodeRef.current = null;
+
+    sourceNodeRef.current?.disconnect();
+    sourceNodeRef.current = null;
+
+    streamRef.current?.getTracks().forEach((t) => t.stop());
+    streamRef.current = null;
+
+    audioContextRef.current?.close();
+    audioContextRef.current = null;
+
+    wsRecognitionRef.current?.stop();
+    wsRecognitionRef.current = null;
+
+    onStatusChange?.('idle');
+  }, [onStatusChange]);
 
   // ── Web Speech API Fallback ─────────────────────────────
   const startWebSpeechFallback = useCallback(() => {
@@ -210,29 +243,6 @@ export function useVoiceRecognizer({
       }
     }
   }, [sendChunkToWhisper, onVolume, onError, onStatusChange, startWebSpeechFallback]);
-
-  // ── 정지 ────────────────────────────────────────────────
-  const stopListening = useCallback(() => {
-    isListeningRef.current = false;
-    isProcessingRef.current = false;
-
-    workletNodeRef.current?.disconnect();
-    workletNodeRef.current = null;
-
-    sourceNodeRef.current?.disconnect();
-    sourceNodeRef.current = null;
-
-    streamRef.current?.getTracks().forEach((t) => t.stop());
-    streamRef.current = null;
-
-    audioContextRef.current?.close();
-    audioContextRef.current = null;
-
-    wsRecognitionRef.current?.stop();
-    wsRecognitionRef.current = null;
-
-    onStatusChange?.('idle');
-  }, [onStatusChange]);
 
   // 언마운트 시 정리
   useEffect(() => {
