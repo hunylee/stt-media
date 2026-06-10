@@ -4,7 +4,8 @@ import "./globals.css";
 
 const notoSansKr = Noto_Sans_KR({
   subsets: ["latin"],
-  weight: ["400", "500", "600", "700", "800", "900"],
+  weight: ["400", "700"],
+  display: "swap",
 });
 
 export const metadata: Metadata = {
@@ -27,8 +28,8 @@ export default function RootLayout({
   children: React.ReactNode;
 }>) {
   return (
-    <html lang="ko">
-      <body className={notoSansKr.className}>{children}</body>
+    <html lang="ko" suppressHydrationWarning>
+      <body className={notoSansKr.className} suppressHydrationWarning>{children}</body>
     </html>
   );
 }

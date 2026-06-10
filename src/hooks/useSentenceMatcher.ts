@@ -7,7 +7,7 @@
 
 'use client';
 
-import { useCallback, useEffect } from 'react';
+import { useCallback, useEffect, useRef } from 'react';
 import { supabase } from '@/utils/supabase/client';
 import { findBestMatch } from '@/utils/sentenceMatcher';
 import { convertToGloss } from '@/utils/glossEngine';
@@ -26,6 +26,9 @@ export function useSentenceMatcher() {
     setIsLoading,
     setError,
   } = useSubtitleStore();
+
+  // 동일 텍스트 중복 매칭 방지
+  const lastMatchedTextRef = useRef<string>('');
 
   // ── 앱 초기화 시 전체 문장 캐싱 ────────────────────────
   useEffect(() => {
@@ -117,6 +120,10 @@ export function useSentenceMatcher() {
   const match = useCallback(
     async (rawText: string, whisperProcessingMs = 0) => {
       if (!rawText.trim()) return;
+
+      // 동일 텍스트 연속 입력 시 API 콜 스킵 (네트워크 저감)
+      if (rawText.trim() === lastMatchedTextRef.current) return;
+      lastMatchedTextRef.current = rawText.trim();
 
       const startTime = Date.now();
       setRawText(rawText);

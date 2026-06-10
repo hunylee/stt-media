@@ -15,10 +15,10 @@ This version has breaking changes — APIs, conventions, and file structure may 
 4. Hermes agent로 위 내용으로 기획, 설계를 하기
 5. 언어는 웹앱으로 모바일과 웹으로 보일 수 있게 typescript로 개발
 6. 데이터셋은 스크립트 파일을 활용해서 supabase 연동
-7. 코딩은 claude sonnet 4.6 + gemini 3.1 pro를 활용
+7. 코딩은 codex + gemini 3.1 pro를 활용해서 진행
 8. Hareness를 이용해서 코드 리뷰 및 수정 후 완성 배포
 
-## 차후 개발 계획(개발 계획이며 개발은 진행 안 함)
+## 차후 개발 계획(개발 계획이며 개발은 진행 안함)
 1. Signgpt 소스를 분석
 2. Hermes agent를 이용해서 signgpt 소스와 mediapipe를 활용한 영상 촬영 데이터셋 구축
 3. 데이터셋을 추출해서 수어영상을 데이터로 전환 

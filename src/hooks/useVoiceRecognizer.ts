@@ -67,11 +67,15 @@ export function useVoiceRecognizer({
   const audioContextRef = useRef<AudioContext | null>(null);
   const workletNodeRef = useRef<AudioWorkletNode | null>(null);
   const sourceNodeRef = useRef<MediaStreamAudioSourceNode | null>(null);
+  const gainNodeRef = useRef<GainNode | null>(null);
   const streamRef = useRef<MediaStream | null>(null);
   // eslint-disable-next-line @typescript-eslint/no-explicit-any
   const wsRecognitionRef = useRef<any>(null);
   const isListeningRef = useRef(false);
   const isProcessingRef = useRef(false);
+  // 처리 중인 chunk 수 추적 (메모리 제한용)
+  const pendingChunksRef = useRef(0);
+  const MAX_PENDING_CHUNKS = 2;
 
   const isSupported = useSyncExternalStore(
     subscribeToSupportChanges,
@@ -83,9 +87,13 @@ export function useVoiceRecognizer({
   const stopListening = useCallback(() => {
     isListeningRef.current = false;
     isProcessingRef.current = false;
+    pendingChunksRef.current = 0;
 
     workletNodeRef.current?.disconnect();
     workletNodeRef.current = null;
+
+    gainNodeRef.current?.disconnect();
+    gainNodeRef.current = null;
 
     sourceNodeRef.current?.disconnect();
     sourceNodeRef.current = null;
@@ -93,8 +101,12 @@ export function useVoiceRecognizer({
     streamRef.current?.getTracks().forEach((t) => t.stop());
     streamRef.current = null;
 
-    audioContextRef.current?.close();
+    // AudioContext 닫기 (비동기지만 ref는 즉시 null)
+    const ctx = audioContextRef.current;
     audioContextRef.current = null;
+    if (ctx && ctx.state !== 'closed') {
+      ctx.close().catch(() => {});
+    }
 
     wsRecognitionRef.current?.stop();
     wsRecognitionRef.current = null;
@@ -136,8 +148,11 @@ export function useVoiceRecognizer({
   // ── WAV 청크 → Whisper API 전송 ────────────────────────
   const sendChunkToWhisper = useCallback(
     async (samples: Float32Array) => {
-      if (isProcessingRef.current) return; // 이전 요청 완료 전 중복 방지
+      // 동시 처리 chunk 수 제한 (메모리 보호)
+      if (pendingChunksRef.current >= MAX_PENDING_CHUNKS) return;
+      if (isProcessingRef.current) return;
       isProcessingRef.current = true;
+      pendingChunksRef.current++;
       onStatusChange?.('processing');
 
       try {
@@ -177,6 +192,7 @@ export function useVoiceRecognizer({
         startWebSpeechFallback();
       } finally {
         isProcessingRef.current = false;
+        pendingChunksRef.current = Math.max(0, pendingChunksRef.current - 1);
       }
     },
     [onTranscript, onError, onStatusChange, startWebSpeechFallback] // eslint-disable-line
@@ -213,9 +229,16 @@ export function useVoiceRecognizer({
       const workletNode = new AudioWorkletNode(ctx, 'audio-processor');
       workletNodeRef.current = workletNode;
 
+      // 무음 출력 (모니터링 방지) — GainNode ref 관리
+      const silentGain = ctx.createGain();
+      silentGain.gain.value = 0;
+      gainNodeRef.current = silentGain;
+
       // WorkletNode 메시지 수신
       workletNode.port.onmessage = (event: MessageEvent) => {
-        const { type, samples, rms } = event.data;
+        const { type, rms } = event.data;
+        // transferable ArrayBuffer로 전송된 samples
+        const samples = event.data.samples as Float32Array | undefined;
 
         if (type === 'volume' && onVolume) {
           onVolume(rms as number);
@@ -226,9 +249,10 @@ export function useVoiceRecognizer({
         }
       };
 
+      // source → workletNode → silentGain (destination 직접 연결 안 함)
       source.connect(workletNode);
-      workletNode.connect(ctx.destination); // 모니터링 off (mute)
-      workletNode.connect(ctx.createGain()); // 무음 출력
+      workletNode.connect(silentGain);
+      silentGain.connect(ctx.destination);
 
       isListeningRef.current = true;
       onStatusChange?.('listening');
